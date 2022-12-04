@@ -36,7 +36,32 @@ fn riddle_part_one(file_path: &String) {
     println!("Total object values: {}", total_value_counter);
 }
 
-fn riddle_part_two(file_path: &String) {}
+fn riddle_part_two(file_path: &String) {
+    let file = File::open(file_path).expect("Error opening file");
+    let reader = BufReader::new(file);
+
+    let mut all_elf_bags = Vec::new();
+    for l in reader.lines().into_iter() {
+        let bag_content: HashSet<char> = l.unwrap().chars().collect();
+        all_elf_bags.push(bag_content);
+    }
+
+    let mut score_across_groups: u64 = 0;
+    for group_start_index in (0..all_elf_bags.len()).step_by(3) {
+        let first_elf_bag = all_elf_bags[group_start_index].clone();
+        let second_elf_bag = all_elf_bags[group_start_index + 1].clone();
+        let third_elf_bag = all_elf_bags[group_start_index + 2].clone();
+
+        let common_items = first_elf_bag
+            .iter()
+            .filter(|item| second_elf_bag.contains(item) && third_elf_bag.contains(item))
+            .map(|&y| y)
+            .nth(0)
+            .unwrap();
+        score_across_groups += get_char_value(common_items);
+    }
+    println!("Score across all groups: {}", score_across_groups);
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
