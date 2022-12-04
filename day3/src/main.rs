@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -22,22 +23,15 @@ fn riddle_part_one(file_path: &String) {
         let ll = l.unwrap();
         let line = ll.trim();
 
-        let first_compartment: Vec<char> = line[0..(line.len() / 2)].chars().collect();
-        let second_compartment: Vec<char> = line[(line.len() / 2)..line.len()].chars().collect();
+        let first_compartment: HashSet<char> = line[0..(line.len() / 2)].chars().collect();
+        let second_compartment: HashSet<char> =
+            line[(line.len() / 2)..line.len()].chars().collect();
 
-        let mut matchingChars: Vec<char> = first_compartment
-            .iter()
-            .filter(|item| second_compartment.contains(item))
-            .map(|&x| x)
-            .collect();
-        matchingChars.sort();
-        matchingChars.dedup();
-
-        if matchingChars.len() != 1 {
-            panic!("WTF");
-        }
-
-        total_value_counter += get_char_value(*matchingChars.get(0).unwrap());
+        let common_item = first_compartment
+            .intersection(&second_compartment)
+            .nth(0)
+            .unwrap();
+        total_value_counter += get_char_value(*common_item);
     }
     println!("Total object values: {}", total_value_counter);
 }
