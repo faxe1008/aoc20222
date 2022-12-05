@@ -6,11 +6,12 @@ use std::str::FromStr;
 
 #[derive(Debug)]
 enum CraneInstruction {
-    MoveCrateFromToStack(usize, usize, usize)
+    MoveCrateFromToStack(usize, usize, usize),
+    MoveCrateFromToStackBatched(usize, usize, usize)
 }
 
 impl CraneInstruction {
-    fn from_str(value: &str) -> Result<Self, &'static str> {
+    fn from_str(value: &str, is_batched: bool ) -> Result<Self, &'static str> {
         // move 3 from 5 to 1
         let instruction_parts = value.trim().split_whitespace().collect::<Vec<&str>>();
         if instruction_parts.len() != 6{
@@ -28,7 +29,11 @@ impl CraneInstruction {
             if count.is_err() || source.is_err() || target.is_err() {
                 return Err("Invalid format");
             }
-         Ok(CraneInstruction::MoveCrateFromToStack(count.unwrap(), source.unwrap() - 1, target.unwrap() - 1))
+        if is_batched{
+            Ok(CraneInstruction::MoveCrateFromToStackBatched(count.unwrap(), source.unwrap() - 1, target.unwrap() - 1))
+        } else{
+            Ok(CraneInstruction::MoveCrateFromToStack(count.unwrap(), source.unwrap() - 1, target.unwrap() - 1))
+        }
     }
 }
 
@@ -43,24 +48,44 @@ impl CargoBay {
     }
 
     fn execute(&mut self, instruction: CraneInstruction) {
-        if let CraneInstruction::MoveCrateFromToStack(count, source, target) = instruction {
-            for i in 0..count { 
-                let source_crate :Option<char> = {
+       match instruction {
+            CraneInstruction::MoveCrateFromToStack(count, source, target) => {
+                    for i in 0..count { 
+                            let source_crate :Option<char> = {
+                                let source_stack = self.cargo_stacks.get_mut(source);
+                                if source_stack.is_none() {
+                                     None
+                                }else{
+                                    source_stack.unwrap().pop()
+                                }
+                            };
+                        
+                            let target_stack = self.cargo_stacks.get_mut(target);
+                            if  target_stack.is_some() && source_crate.is_some() {
+                                    target_stack.unwrap().push(source_crate.unwrap());
+                            }
+                        
+                    }
+            },
+            CraneInstruction::MoveCrateFromToStackBatched(count, source, target) => {
+                let stack_items_in_batch = {
                     let source_stack = self.cargo_stacks.get_mut(source);
-                    if source_stack.is_none() {
-                         None
-                    }else{
-                        source_stack.unwrap().pop()
+                    if let Some(stack) = source_stack {
+                        let stack_start_index =  stack.len()  - count;
+                        Some(stack.drain(stack_start_index..).collect::<Vec<char>>())
+                    } else {
+                        None
                     }
                 };
-               
-                let target_stack = self.cargo_stacks.get_mut(target);
-                if  target_stack.is_some() && source_crate.is_some() {
-                        target_stack.unwrap().push(source_crate.unwrap());
+                if let Some(target_stack) = self.cargo_stacks.get_mut(target)  {
+                    if let Some(mut movable_items) = stack_items_in_batch {
+                        target_stack.append(&mut movable_items);
+                    }
                 }
-            
+
+            }
         }
-        }
+
     }
 
     fn print_stack_tops(&self) {
@@ -80,15 +105,12 @@ trait FromStringReprExt {
 
 impl FromStringReprExt for CargoStack {
     fn from_str(value: &str) -> Self {
-        value.chars().collect()
+        value.chars().collect() 
     }
 }
 
-
-
-fn riddle_part_one(file_path: &String) {
-
- /*
+fn execute_riddle(file_path: &String, batched_mode: bool ) {
+/*
     [T]     [Q]             [S]        
     [R]     [M]             [L] [V] [G]
     [D] [V] [V]             [Q] [N] [C]
@@ -117,25 +139,31 @@ fn riddle_part_one(file_path: &String) {
    
     let file = File::open(file_path).expect("Error opening file");
     let reader = BufReader::new(file);
+    cargo_bay.print_stack_tops();
 
     for l in reader.lines().into_iter() {
-        let instruction_or_error = CraneInstruction::from_str(&l.unwrap());
+        let instruction_or_error = CraneInstruction::from_str(&l.unwrap(), batched_mode);
         if let Ok(instruction) = instruction_or_error{
             println!("Instruction: {:?}", instruction);
             cargo_bay.execute(instruction);
+            cargo_bay.print_stack_tops();
+
         }
     }
 
 
     cargo_bay.print_stack_tops();
 
+}
 
 
+
+fn riddle_part_one(file_path: &String) {
+    execute_riddle(file_path, false);
 }
 
 fn riddle_part_two(file_path: &String) {
-   
-
+    execute_riddle(file_path, true);
 }
 
 fn main() {
