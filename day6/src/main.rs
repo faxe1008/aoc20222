@@ -2,28 +2,27 @@ use std::env;
 use std::fs;
 use std::collections::HashSet;
 
+
+fn find_unique_seq(value: &str, length: usize) -> Option<usize> {
+    for index in length..value.len() {
+        let  header = value[index-length..index].chars().collect::<HashSet<char>>();
+        if header.len() == length {
+            return Some(index);
+        }
+    }
+    return None;
+}
+
 fn riddle_part_one(file_path: &String)  {
     let text = fs::read_to_string(file_path).expect("Error reading file");
 
-    for index in 4..text.len() {
-        let  header = text[index-4..index].chars().collect::<HashSet<char>>();
-        if header.len() == 4 {
-            println!("First index with unique header: {}", index);
-            break;
-        }
-    }
+    println!("Header ends at: {:?}", find_unique_seq(&text, 4));
 }
 
 fn riddle_part_two(file_path: &String) {
     let text = fs::read_to_string(file_path).expect("Error reading file");
 
-    for index in 14..text.len() {
-        let  header = text[index-14..index].chars().collect::<HashSet<char>>();
-        if header.len() == 14 {
-            println!("First index with unique header: {}", index);
-            break;
-        }
-    }
+    println!("Header ends at: {:?}", find_unique_seq(&text, 14));
 }
 
 fn main() {
