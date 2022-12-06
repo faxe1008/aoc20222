@@ -15,6 +15,15 @@ fn riddle_part_one(file_path: &String)  {
 }
 
 fn riddle_part_two(file_path: &String) {
+    let text = fs::read_to_string(file_path).expect("Error reading file");
+
+    for index in 14..text.len() {
+        let  header = text[index-14..index].chars().collect::<HashSet<char>>();
+        if header.len() == 14 {
+            println!("First index with unique header: {}", index);
+            break;
+        }
+    }
 }
 
 fn main() {
