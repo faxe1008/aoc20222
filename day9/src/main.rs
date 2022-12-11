@@ -18,34 +18,16 @@ enum Direction {
     Right
 }
 
-
-fn riddle_part_one(file_path: &String)  {
+ fn simulate_rope_with_length(file_path: &String, rope_length:  usize)
+{
     let file = File::open(file_path).expect("Error opening file");
 
     let mut tail_visited_points :Vec<Point>= Vec::new();
-    let mut head_position = Point { x: 0, y: 0};
-    let mut tail_position = Point { x: 0, y: 0};
-    tail_visited_points.push(tail_position.clone());
+    
+    let mut rope_segments : Vec<Point> = vec![Point{x: 0, y: 0}; rope_length];
+ 
 
-    let display_pos = |head_pos: &Point, tail_pos: &Point, visited_points: &Vec<Point>|{
-        for y in -5..5 {
-            for x in -5..5 {
-                let was_visited = visited_points.iter().any(|pt| pt.x == x && pt.y == y);
-
-                let char = if x == head_pos.x && y == head_pos.y {
-                    'H'
-                }else if x == tail_pos.x && y == tail_pos.y {
-                    'T'
-                } else if was_visited {
-                    '#'
-                }else {
-                    '.'
-                };
-                print!("{}", char);
-            }
-            print!("\n");
-        }
-    };
+    tail_visited_points.push(rope_segments[0].clone());
 
     let reader = BufReader::new(file);
     for l in reader.lines().into_iter() {
@@ -62,34 +44,41 @@ fn riddle_part_one(file_path: &String)  {
 
         println!("{:?} len: {}", direction, direction_length);
         for _ in 0..direction_length {
+
+            // Move the head in the given direction
+            let mut head = rope_segments.get_mut(0).unwrap();
             match direction {
                 Direction::Down => {
-                    head_position.y += 1;
+                    head.y += 1;
                 },
                 Direction::Up => {
-                    head_position.y -= 1;
+                    head.y -= 1;
                 },
                 Direction::Left => {
-                    head_position.x -= 1;
+                    head.x -= 1;
                 },
                 Direction::Right => {
-                    head_position.x += 1;
+                    head.x += 1;
                 }
             }
 
-            let head_to_tail_distance = (head_position.x - tail_position.x, head_position.y - tail_position.y);
-            if head_to_tail_distance.0.abs() > 1 || head_to_tail_distance.1.abs() > 1 {
+            // iterate over all the other segments
+            for rope_segment_index in 1..rope_length {
+                let previous_segment = rope_segments[rope_segment_index-1].clone();
+                let mut current_segment = rope_segments.get_mut(rope_segment_index).unwrap();
 
-                let tail_x_movement = head_to_tail_distance.0.clamp(-1, 1);
-                let tail_y_movement = head_to_tail_distance.1.clamp(-1, 1);
+                let segment_distance = (previous_segment.x - current_segment.x, previous_segment.y - current_segment.y);
 
-                tail_position.x += tail_x_movement;
-                tail_position.y += tail_y_movement;
-                tail_visited_points.push(tail_position.clone());
+                if segment_distance.0.abs() > 1 || segment_distance.1.abs() > 1 {
+
+                    let x_movement = segment_distance.0.clamp(-1, 1);
+                    let y_movement = segment_distance.1.clamp(-1, 1);
+
+                    current_segment.x += x_movement;
+                    current_segment.y += y_movement;
+                }
             }
-
-            //display_pos(&head_position, &tail_position, &tail_visited_points);
-            //println!("=========================================================================")
+            tail_visited_points.push(rope_segments.last().unwrap().clone());
         }
 
 
@@ -99,13 +88,15 @@ fn riddle_part_one(file_path: &String)  {
     tail_visited_points.dedup();
 
     println!("Visited Points len: {}", tail_visited_points.len());
-    //println!("Visited Points: {:?}", tail_visited_points);
+}
 
+
+fn riddle_part_one(file_path: &String)  {
+    simulate_rope_with_length(file_path, 2);
 }
 
 fn riddle_part_two(file_path: &String) {
-    let text = fs::read_to_string(file_path).expect("Error reading file");
-
+    simulate_rope_with_length(file_path, 10);
 }
 
 fn main() {
