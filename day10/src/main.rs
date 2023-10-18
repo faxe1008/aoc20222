@@ -47,44 +47,65 @@ impl Program {
     }
 }
 
+#[derive(PartialEq, Debug)]
+enum InstructionState{
+    Executing(usize),
+    FetchedNextInstruction(usize),
+    Finished
+}
+
 struct CPU {
     x_register: isize,
     current_cycle: usize,
     program: Program,
 
-    ip: usize,
-    cycles_remaining_for_instruction: usize
+    ip: isize,
+    instruction_state: InstructionState
 }
 
 impl CPU {
     fn new(program: Program) -> Self {
         let initial_cycle_count = program.instructions[0].cycle_count();
-        CPU { x_register: 1, current_cycle: 1, program, ip: 0, cycles_remaining_for_instruction: initial_cycle_count}
+        CPU { x_register: 1, current_cycle: 1, program, ip: 1, instruction_state: InstructionState::Finished}
     }
 
     fn has_finished_execution(&self) -> bool {
-        self.ip >= self.program.instructions.len()
+         self.ip  >= self.program.instructions.len() as isize
     }
 
-    fn execute(&mut self, ins: &Instruction) {
+    fn run_instruction(&mut self, ins: &Instruction) {
         match ins {
             Instruction::NOOP => {},
             Instruction::ADDX(amount) => {self.x_register += amount; }
         }
     }
 
-    fn tick(&mut self){
-        if self.cycles_remaining_for_instruction == 1 {
-            let current_instruction = self.program.instructions[self.ip];
-            self.execute(&current_instruction);
+    fn fetch(&mut self){
+        if self.instruction_state  == InstructionState::Finished {
             self.ip += 1;
-            if !self.has_finished_execution(){
-                self.cycles_remaining_for_instruction = self.program.instructions[self.ip].cycle_count();
-            }
-        }   else {
-            self.cycles_remaining_for_instruction -= 1;
+            self.instruction_state = InstructionState::FetchedNextInstruction(self.program.instructions[self.ip as usize].cycle_count());
         }
         self.current_cycle += 1;
+
+    }
+
+    fn execute(&mut self)  {
+
+        match self.instruction_state {
+            InstructionState::Executing(remaining_cycles) => {
+                if remaining_cycles > 1 {
+                    self.instruction_state = InstructionState::Executing(remaining_cycles - 1);
+                } else {
+                    let ins = self.program.instructions[self.ip as usize];
+                    self.run_instruction(&ins);
+                    self.instruction_state = InstructionState::Finished;
+                }
+            },
+            InstructionState::FetchedNextInstruction(cycles) => {
+                self.instruction_state = InstructionState::Executing(cycles - 1)
+            },
+            _ => {}
+        }
 
     }
 
@@ -97,17 +118,11 @@ fn riddle_part_one(file_path: &String)  {
     let program = Program::from_text(&text);
     let mut cpu = CPU::new(program);
 
-    let interesting_cycles = vec![20, 60, 100, 140, 180, 220];
-    let mut signal_sum : isize = 0;
     while !cpu.has_finished_execution() {
-        println!("Cycle: {}, IP: {:?}, REG: {}", cpu.current_cycle, cpu.ip, cpu.x_register);
-        if interesting_cycles.contains(&cpu.current_cycle) {
-            signal_sum += cpu.current_cycle as isize * cpu.x_register;
-        }
-        cpu.tick();
-
+        cpu.fetch();
+        println!("Cycle: {}, State: {:?}, IP: {:?}, REG: {}", cpu.current_cycle, cpu.instruction_state, cpu.ip, cpu.x_register);
+        cpu.execute();
     }
-    println!("Signal Sum: {}", signal_sum);
 }
 
 fn riddle_part_two(file_path: &String) {
